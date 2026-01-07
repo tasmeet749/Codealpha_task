@@ -186,14 +186,37 @@ class PortfolioTracker:
         summary = f"Portfolio Value: ${total_value:,.2f}\n"
         summary += f"Total Cost:     ${total_cost:,.2f}\n"
         summary += f"Gain/Loss:      ${total_value - total_cost:,.2f}\n"
-        summary += f"Return:         {((total_value - total_cost) / total_cost * 100):.1f}%\n"
+        
+        # Fix for ZeroDivisionError
+        if total_cost > 0:
+            summary += f"Return:         {((total_value - total_cost) / total_cost * 100):.1f}%\n"
+        else:
+            summary += "Return:         N/A\n"
+            
         summary += f"Stocks:         {len(self.portfolio)}\n"
         
-        if self.portfolio:
-            best = max(self.portfolio.items(), key=lambda x: (STOCKS[x[0]] - x[1]['avg_cost']) / x[1]['avg_cost'])
-            worst = min(self.portfolio.items(), key=lambda x: (STOCKS[x[0]] - x[1]['avg_cost']) / x[1]['avg_cost'])
-            summary += f"Best:          {best[0]} (+{((STOCKS[best[0]] - best[1]['avg_cost']) / best[1]['avg_cost'] * 100):.1f}%)\n"
-            summary += f"Worst:         {worst[0]} ({((STOCKS[worst[0]] - worst[1]['avg_cost']) / worst[1]['avg_cost'] * 100):.1f}%)"
+        # Fix for ZeroDivisionError in best/worst calculations
+        if self.portfolio and total_cost > 0:
+            # Calculate best and worst performing stocks
+            best = None
+            worst = None
+            best_pct = -float('inf')
+            worst_pct = float('inf')
+            
+            for ticker, data in self.portfolio.items():
+                if data['avg_cost'] > 0:  # Avoid division by zero
+                    pct_change = (STOCKS[ticker] - data['avg_cost']) / data['avg_cost'] * 100
+                    if pct_change > best_pct:
+                        best_pct = pct_change
+                        best = (ticker, pct_change)
+                    if pct_change < worst_pct:
+                        worst_pct = pct_change
+                        worst = (ticker, pct_change)
+            
+            if best:
+                summary += f"Best:          {best[0]} (+{best[1]:.1f}%)\n"
+            if worst:
+                summary += f"Worst:         {worst[0]} ({worst[1]:.1f}%)"
         
         self.summary_text.insert(tk.END, summary)
         
